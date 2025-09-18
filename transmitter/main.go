@@ -16,10 +16,10 @@ func read(filepath string) string {
 }
 
 func main() {
-	filepath := "main.go"
+	filepath := "filepath"
 	file := read(filepath)
 	json := fmt.Sprintf(`{"path":%s,"content":%s}`, filepath, file)
-	resp, err := http.Post("http://192.168.1.117:8080/", "application/json", strings.NewReader(json))
+	resp, err := http.Post("http://<ip>:8080/", "application/json", strings.NewReader(json))
 	if err != nil {
 		panic(err)
 	}
