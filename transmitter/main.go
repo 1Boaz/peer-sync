@@ -17,7 +17,7 @@ func read(filepath string) string {
 
 func main() {
 	file := read("filename")
-	resp, err := http.Post("http://<ip>:8080/", "text", strings.NewReader(file))
+	resp, err := http.Post("http://<ip>:8080/", "text/plain", strings.NewReader(file))
 	if err != nil {
 		panic(err)
 	}

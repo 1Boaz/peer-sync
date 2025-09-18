@@ -1,17 +1,14 @@
-use actix_web::{post, App, HttpResponse, HttpServer, Responder};
-use local_ip_address::local_ip;
+mod save;
 
-#[post("/")]
-async fn echo(req_body: String) -> impl Responder {
-    println!("{}", req_body);
-    HttpResponse::Ok()
-}
+use save::save as Save;
+use actix_web::{App, HttpServer};
+use local_ip_address::local_ip;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     HttpServer::new(|| {
         App::new()
-            .service(echo)
+            .service(Save)
     })
         .bind((get_ip(), 8080))?
         .run()
