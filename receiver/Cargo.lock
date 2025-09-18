@@ -1002,6 +1002,8 @@ version = "0.1.0"
 dependencies = [
  "actix-web",
  "local-ip-address",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
