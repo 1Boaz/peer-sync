@@ -21,7 +21,7 @@ func send(path string, file string) {
 	}
 
 	fmt.Println("Sending:", string(json))
-	resp, err := http.Post("http://192.168.1.117:8080/", "application/json", strings.NewReader(string(json)))
+	resp, err := http.Post("http://<ip>:8080/", "application/json", strings.NewReader(string(json)))
 	if err != nil {
 		panic(err)
 	}

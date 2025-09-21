@@ -7,9 +7,9 @@ import (
 func main() {
 	paths := []string{"main.go", "read.go", "send.go"}
 	var wg sync.WaitGroup
-	for i, path := range paths {
+	for _, path := range paths {
 		wg.Add(1)
-		go read(path, uint(i), &wg)
+		go read(path, &wg)
 	}
 	wg.Wait()
 }
