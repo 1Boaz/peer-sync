@@ -4,10 +4,12 @@ import (
 	"os"
 )
 
-func read(filepath string) string {
-	data, err := os.ReadFile(filepath)
-	if err != nil {
-		panic(err)
+func read(paths []string) {
+	for _, path := range paths {
+		data, err := os.ReadFile(path)
+		if err != nil {
+			panic(err)
+		}
+		send(path, string(data))
 	}
-	return string(data)
 }

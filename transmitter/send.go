@@ -12,7 +12,7 @@ type Json struct {
 	Content string `json:"content"`
 }
 
-func send(path string, file string) *http.Response {
+func send(path string, file string) {
 	data := Json{Path: path, Content: file}
 
 	json, err := json.Marshal(data)
@@ -21,10 +21,10 @@ func send(path string, file string) *http.Response {
 	}
 
 	fmt.Println("Sending:", string(json))
-	resp, err := http.Post("http://<ip>:8080/", "application/json", strings.NewReader(string(json)))
+	resp, err := http.Post("http://192.168.1.117:8080/", "application/json", strings.NewReader(string(json)))
 	if err != nil {
 		panic(err)
 	}
 
-	return resp
+	fmt.Println(resp)
 }
