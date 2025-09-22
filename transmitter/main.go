@@ -1,15 +1,13 @@
 package main
 
-import (
-	"sync"
-)
+import "sync"
 
 func main() {
-	paths := []string{"main.go", "read.go", "send.go"}
+	conf := getConfig()
 	var wg sync.WaitGroup
-	for _, path := range paths {
+	for _, path := range conf.Paths {
 		wg.Add(1)
-		go read(path, &wg)
+		go read(path, &wg, conf.Url)
 	}
 	wg.Wait()
 }
