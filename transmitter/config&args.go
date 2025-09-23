@@ -3,7 +3,9 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io/fs"
 	"os"
+	"path/filepath"
 
 	"github.com/alexflint/go-arg"
 )
@@ -34,23 +36,12 @@ func getConfig() Config {
 	var expandedPaths []string
 
 	for _, path := range cfg.Paths {
-		fi, err := os.Stat(path)
+		err := filepath.WalkDir(path, func(path2 string, d fs.DirEntry, err error) error {
+			expandedPaths = append(expandedPaths, path2)
+			return nil
+		})
 		if err != nil {
 			fmt.Println(err)
-			continue
-		}
-		if fi.IsDir() {
-			entries, err := os.ReadDir(path)
-			if err != nil {
-				fmt.Println(err)
-				continue
-			}
-
-			for _, e := range entries {
-				expandedPaths = append(expandedPaths, path+e.Name())
-			}
-		} else {
-			expandedPaths = append(expandedPaths, path)
 		}
 	}
 	cfg.Paths = expandedPaths
