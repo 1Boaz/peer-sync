@@ -50,7 +50,8 @@ Create a `config.json` file (location does not matter if you specify the path in
 ```json
 {
   "url": "http://<receiver-ip>:8080/",
-  "paths": ["file1.txt", "dir/file2.txt"]
+  "paths": ["file1.txt", "dir/file2.txt", "dir/"],
+  "key": "The key you set"
 }
 ```
 
@@ -69,7 +70,7 @@ go build -o transmitter
 
 1. Start the receiver:
    ```sh
-    ./ executable path
+    ./target/release/receiver -p 8080
    ```
 2. Start the transmitter:
    ```sh

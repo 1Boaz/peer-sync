@@ -13,6 +13,7 @@ import (
 type Config struct {
 	Url   string
 	Paths []string
+	Key   string
 }
 
 func getConfig() Config {

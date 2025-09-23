@@ -40,7 +40,7 @@ func listen(conf Config, watcher *fsnotify.Watcher) {
 				var wg sync.WaitGroup
 				for _, path := range conf.Paths {
 					wg.Add(1)
-					go read(path, &wg, conf.Url)
+					go read(path, &wg, conf)
 				}
 				wg.Wait()
 			}

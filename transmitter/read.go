@@ -5,11 +5,11 @@ import (
 	"sync"
 )
 
-func read(path string, wg *sync.WaitGroup, url string) {
+func read(path string, wg *sync.WaitGroup, config Config) {
 	defer wg.Done()
 	data, err := os.ReadFile(path)
 	if err != nil {
 		panic(err)
 	}
-	send(path, string(data), url)
+	send(path, string(data), config)
 }
