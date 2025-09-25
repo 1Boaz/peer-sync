@@ -1,10 +1,12 @@
 package main
 
 import (
+	"bytes"
+	"compress/gzip"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
-	"strings"
 )
 
 type Json struct {
@@ -14,25 +16,38 @@ type Json struct {
 
 func send(path string, file string, config Config) {
 	data := Json{Path: path, Content: file}
-
-	json, err := json.Marshal(data)
+	jsonData, err := json.Marshal(data)
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 
-	fmt.Println("Sending:", string(json))
-	req, err := http.NewRequest("Post", config.Url, strings.NewReader(string(json)))
-	if err != nil {
-		panic(err)
+	var gziped bytes.Buffer
+	gz := gzip.NewWriter(&gziped)
+
+	if _, err := gz.Write(jsonData); err != nil {
+		log.Fatal(err)
 	}
-	req.Header.Add("Content-Type", "application/json")
-	req.Header.Add("Authorization", config.Key)
+
+	if err := gz.Close(); err != nil {
+		log.Fatal(err)
+	}
+
+	req, err := http.NewRequest("POST", config.Url, &gziped)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Encoding", "gzip")
+	req.Header.Set("Authorization", config.Key)
 
 	client := &http.Client{}
+
 	resp, err := client.Do(req)
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
+	defer resp.Body.Close()
 
-	fmt.Println(resp)
+	fmt.Println("Response status:", resp.Status)
 }

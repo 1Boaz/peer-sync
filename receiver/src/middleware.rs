@@ -4,9 +4,7 @@ pub async fn validate(req: ServiceRequest, next: Next<impl MessageBody>) -> Resu
     let passkey = req.app_data::<web::Data<String>>().unwrap().to_string();
 
     if let Some(auth_header) = req.headers().get("Authorization") {
-        println!("{:?}", auth_header);
         if let Ok(auth_str) = auth_header.to_str() {
-            println!("{}", auth_str);
             if auth_str == passkey {
                 return next.call(req).await;
             }

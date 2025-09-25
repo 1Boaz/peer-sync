@@ -18,6 +18,7 @@ async fn main() -> std::io::Result<()> {
 
     HttpServer::new(move || {
         App::new()
+            .app_data(web::PayloadConfig::new(80_000_000)) // 80MB max payload size
             .app_data(web::Data::new(passkey.clone()))
             .wrap(from_fn(middleware::validate))
             .service(Save)

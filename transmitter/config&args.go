@@ -38,6 +38,12 @@ func getConfig() Config {
 
 	for _, path := range cfg.Paths {
 		err := filepath.WalkDir(path, func(path2 string, d fs.DirEntry, err error) error {
+			if err != nil {
+				return err
+			}
+			if d.IsDir() {
+				return nil
+			}
 			expandedPaths = append(expandedPaths, path2)
 			return nil
 		})
