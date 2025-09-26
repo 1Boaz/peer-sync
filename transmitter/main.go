@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"sync"
 	"time"
@@ -64,16 +63,13 @@ func listen(conf Config, watcher *fsnotify.Watcher) {
 			}
 			log.Println("event:", event)
 			if event.Has(fsnotify.Write) {
-				if time.Since(called_at) < 2500*time.Millisecond {
-					fmt.Println("debounce")
-					continue
+				if since := time.Since(called_at); since < 2500*time.Millisecond {
+					time.Sleep(2500*time.Millisecond - since)
 				}
 				called_at = time.Now()
 				var wg sync.WaitGroup
-				for _, path := range conf.Paths {
-					wg.Add(1)
-					go read(path, &wg, conf)
-				}
+				path := event.Name
+				go read(path, &wg, conf)
 				wg.Wait()
 			}
 		case err, ok := <-watcher.Errors:

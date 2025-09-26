@@ -22,7 +22,7 @@ type Json struct {
 // / * `config` - The configuration struct containing the receiver's URL and passkey
 // /
 // / # Errors
-// / * Returns an error if the file cannot be marshalled into JSON or if the gzip operation fails.
+// / * Prints an error if the file cannot be marshalled into JSON or if the gzip operation fails.
 // / * Logs a fatal error if the HTTP request fails or if the response status is not 200 OK.
 func send(path string, file string, config Config) {
 	data := Json{Path: path, Content: file}
@@ -60,4 +60,7 @@ func send(path string, file string, config Config) {
 	defer resp.Body.Close()
 
 	fmt.Println("Response status:", resp.Status)
+	if resp.StatusCode != 200 {
+		log.Fatal(resp.Status)
+	}
 }

@@ -13,7 +13,10 @@ use actix_web::{body::MessageBody, dev::{ServiceRequest, ServiceResponse}, middl
 /// # Errors
 /// * Returns `ErrorUnauthorized` if the Authorization header is missing or doesn't match the expected passkey
 pub async fn validate(req: ServiceRequest, next: Next<impl MessageBody>) -> Result<ServiceResponse<impl MessageBody>, Error> {
-    let passkey = req.app_data::<web::Data<String>>().unwrap().to_string();
+    let passkey = req
+        .app_data::<web::Data<String>>()
+        .map(|data| data.as_str())
+        .ok_or_else(|| actix_web::error::ErrorInternalServerError("Passkey not configured"))?;
 
     if let Some(auth_header) = req.headers().get("Authorization") {
         if let Ok(auth_str) = auth_header.to_str() {

@@ -13,8 +13,7 @@ use clap::Parser;
 /// # Returns
 /// * `std::io::Result<()>` - Ok if the server runs successfully, or an IO error if it fails.
 ///
-/// # Panics
-/// * If the server fails to bind to the specified IP and port.
+/// Errors are propagated via the returned `Result` rather than causing a panic.
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     let args = args::ReceiverArgs::parse();
