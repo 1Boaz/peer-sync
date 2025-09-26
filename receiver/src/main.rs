@@ -8,6 +8,13 @@ use actix_web::middleware::from_fn;
 use local_ip_address::local_ip;
 use clap::Parser;
 
+/// Main entry point for the file receiver server.
+///
+/// # Returns
+/// * `std::io::Result<()>` - Ok if the server runs successfully, or an IO error if it fails.
+///
+/// # Panics
+/// * If the server fails to bind to the specified IP and port.
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     let args = args::ReceiverArgs::parse();
@@ -28,6 +35,10 @@ async fn main() -> std::io::Result<()> {
         .await
 }
 
+/// Gets the local IP address of the machine.
+///
+/// # Returns
+/// * `String` - The local IP address as a string, or "0.0.0.0" if the IP cannot be determined.
 fn get_ip() -> String {
     match local_ip() {
         Ok(s) => s.to_string(),

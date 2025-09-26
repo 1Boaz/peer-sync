@@ -4,12 +4,26 @@ use serde_json::from_str;
 use std::fs;
 use std::path::Path;
 
+/// Represents a file to be saved, containing its path and content.
+///
+/// # Fields
+/// * `path` - The filesystem path where the file should be saved
+/// * `content` - The content to be written to the file
 #[derive(Deserialize)]
 struct File {
     path: String,
     content: String,
 }
 
+/// Handles the HTTP POST request to save a file.
+///
+/// # Arguments
+/// * `req_body` - A JSON string containing the file path and content
+///
+/// # Returns
+/// * `HttpResponse` - 200 OK with success message on success
+///                   - 400 Bad Request for invalid JSON
+///                   - 500 Internal Server Error if file cannot be saved
 #[post("/")]
 async fn save(req_body: String) -> impl Responder {
     match from_str::<File>(&req_body) {
@@ -21,6 +35,16 @@ async fn save(req_body: String) -> impl Responder {
     }
 }
 
+/// Saves the file to the specified path, creating directories if needed.
+///
+/// # Arguments
+/// * `data` - A `File` struct containing the path and content
+///
+/// # Returns
+/// * `Result<String, String>` - Success message or error description
+///
+/// # Errors
+/// * Returns an error if directories cannot be created or file cannot be written
 fn save_file(data: File) -> Result<String, String> {
     let path = Path::new(&data.path);
 
