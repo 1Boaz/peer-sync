@@ -22,11 +22,14 @@ async fn main() -> std::io::Result<()> {
 
     println!("Starting server at http://{}:{}", ip, args.port);
 
+    env_logger::init_from_env(env_logger::Env::new().default_filter_or("info"));
+
     HttpServer::new(move || {
         App::new()
             .app_data(web::PayloadConfig::new(80_000_000)) // 80MB max payload size
             .app_data(web::Data::new(passkey.clone()))
             .wrap(from_fn(middleware::validate))
+            .wrap(actix_web::middleware::Logger::default())
             .service(Save)
     })
         .bind((ip, args.port))?

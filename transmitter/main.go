@@ -64,10 +64,11 @@ func listen(conf Config, watcher *fsnotify.Watcher) {
 			log.Println("event:", event)
 			if event.Has(fsnotify.Write) {
 				if since := time.Since(called_at); since < 2500*time.Millisecond {
-					time.Sleep(2500*time.Millisecond - since)
+					continue
 				}
 				called_at = time.Now()
 				var wg sync.WaitGroup
+				wg.Add(1)
 				path := event.Name
 				go read(path, &wg, conf)
 				wg.Wait()
