@@ -1,6 +1,7 @@
 mod save;
 mod args;
 mod middleware;
+mod remove;
 
 use save::save as Save;
 use actix_web::{App, HttpServer, web};
@@ -31,6 +32,7 @@ async fn main() -> std::io::Result<()> {
             .wrap(from_fn(middleware::validate))
             .wrap(actix_web::middleware::Logger::default())
             .service(Save)
+            .service(remove::delete)
     })
         .bind((ip, args.port))?
         .run()

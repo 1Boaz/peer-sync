@@ -24,7 +24,7 @@ type Json struct {
 // / # Errors
 // / * Prints an error if the file cannot be marshalled into JSON or if the gzip operation fails.
 // / * Logs a fatal error if the HTTP request fails or if the response status is not 200 OK.
-func send(path string, file string, config Config) {
+func send(path string, file string, WriteOrDelete string, config Config) {
 	data := Json{Path: path, Content: file}
 	jsonData, err := json.Marshal(data)
 	if err != nil {
@@ -42,7 +42,7 @@ func send(path string, file string, config Config) {
 		log.Fatal(err)
 	}
 
-	req, err := http.NewRequest("POST", config.Url, &gziped)
+	req, err := http.NewRequest(WriteOrDelete, config.Url, &gziped)
 	if err != nil {
 		log.Fatal(err)
 	}

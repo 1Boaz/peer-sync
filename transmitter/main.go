@@ -62,7 +62,8 @@ func listen(conf Config, watcher *fsnotify.Watcher) {
 				return
 			}
 			log.Println("event:", event)
-			if event.Has(fsnotify.Write) {
+			switch event.Op {
+			case fsnotify.Write:
 				if since := time.Since(called_at); since < 2500*time.Millisecond {
 					continue
 				}
@@ -71,6 +72,12 @@ func listen(conf Config, watcher *fsnotify.Watcher) {
 				wg.Add(1)
 				path := event.Name
 				go read(path, &wg, conf)
+				wg.Wait()
+			case fsnotify.Remove, fsnotify.Rename:
+				var wg sync.WaitGroup
+				wg.Add(1)
+				path := event.Name
+				go send(path, "", "DELETE", conf)
 				wg.Wait()
 			}
 		case err, ok := <-watcher.Errors:

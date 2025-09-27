@@ -20,5 +20,5 @@ func read(path string, wg *sync.WaitGroup, config Config) {
 	if err != nil {
 		panic(err)
 	}
-	send(path, string(data), config)
+	send(path, string(data), "POST", config)
 }
