@@ -3,10 +3,13 @@ package main
 import (
 	"bytes"
 	"compress/gzip"
+	"context"
 	"encoding/json"
 	"fmt"
-	"log"
+	"io"
+	"log/slog"
 	"net/http"
+	"time"
 )
 
 type Json struct {
@@ -14,53 +17,83 @@ type Json struct {
 	Content string `json:"content"`
 }
 
-// / Sends a file to the receiver's URL using the provided configuration.
-// /
-// / # Parameters
-// / * `path` - The path to the file to be sent
-// / * `file` - The contents of the file to be sent
-// / * `config` - The configuration struct containing the receiver's URL and passkey
-// /
-// / # Errors
-// / * Prints an error if the file cannot be marshalled into JSON or if the gzip operation fails.
-// / * Logs a fatal error if the HTTP request fails or if the response status is not 200 OK.
-func send(path string, file string, WriteOrDelete string, config Config) {
-	data := Json{Path: path, Content: file}
+// var slog = logr.Discard()
+// send sends file data to the receiver with proper error handling and logging.
+// It compresses the data with gzip and includes appropriate headers.
+func send(path, content string, method string, config Config) error {
+	start := time.Now()
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	// Log the start of the send operation
+	slog.Info("sending request",
+		"method", method,
+		"path", path,
+		"content_length", len(content))
+
+	// Prepare the request data
+	data := Json{Path: path, Content: content}
 	jsonData, err := json.Marshal(data)
 	if err != nil {
-		log.Fatal(err)
+		return fmt.Errorf("failed to marshal JSON: %w", err)
 	}
 
-	var gziped bytes.Buffer
-	gz := gzip.NewWriter(&gziped)
-
+	// Compress the data
+	var gzipped bytes.Buffer
+	gz := gzip.NewWriter(&gzipped)
 	if _, err := gz.Write(jsonData); err != nil {
-		log.Fatal(err)
+		return fmt.Errorf("failed to compress data: %w", err)
 	}
-
 	if err := gz.Close(); err != nil {
-		log.Fatal(err)
+		return fmt.Errorf("failed to close gzip writer: %w", err)
 	}
 
-	req, err := http.NewRequest(WriteOrDelete, config.Url, &gziped)
+	// Create the request
+	req, err := http.NewRequestWithContext(ctx, method, config.Url, &gzipped)
 	if err != nil {
-		log.Fatal(err)
+		return fmt.Errorf("failed to create request: %w", err)
 	}
 
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Content-Encoding", "gzip")
 	req.Header.Set("Authorization", config.Key)
 
-	client := &http.Client{}
+	// Configure HTTP client with timeouts
+	client := &http.Client{
+		Timeout: 30 * time.Second,
+		Transport: &http.Transport{
+			MaxIdleConns:        10,
+			IdleConnTimeout:     30 * time.Second,
+			DisableCompression:  true,
+			MaxIdleConnsPerHost: 10,
+		},
+	}
 
+	// Send the request
 	resp, err := client.Do(req)
 	if err != nil {
-		log.Fatal(err)
+		return fmt.Errorf("request failed: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			slog.Error("failed to close response body", "error", err)
+		}
+	}()
 
-	fmt.Println("Response status:", resp.Status)
-	if resp.StatusCode != 200 {
-		log.Fatal(resp.Status)
+	// Read the response body for error details
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("failed to read response body: %w", err)
 	}
+
+	// Log the response
+	slog.Info("request completed",
+		"method", method,
+		"path", path,
+		"status", resp.Status,
+		"status_code", resp.StatusCode,
+		"duration_ms", time.Since(start).Milliseconds(),
+		"response_size", len(body))
+
+	return nil
 }

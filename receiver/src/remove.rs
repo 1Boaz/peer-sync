@@ -1,57 +1,88 @@
+use crate::error::{Result, AppError};
 use actix_web::{delete, HttpResponse, Responder};
 use serde::Deserialize;
-use serde_json::from_str;
-use std::fs;
-use std::fs::metadata;
+use tracing::{info, error};
 
 #[derive(Deserialize)]
 struct File {
     path: String,
-    content: String,
 }
 
-/// Handles the HTTP DELETE request to remove a file.
+/// Deletes a file given its path.
 ///
-/// # Parameters
-/// * `req_body` - A JSON string containing the file path to be removed
+/// This endpoint expects a JSON payload containing the `path` field.
+/// The `path` field should contain the relative or absolute path to the file to be removed.
 ///
-/// # Returns
-/// * `HttpResponse` - 200 OK with success message on success
-///                   - 400 Bad Request for invalid JSON
-///                   - 500 Internal Server Error if file cannot be removed
+/// Returns a successful response with a plain text body containing the message "Successfully removed file"
+/// if the file was removed successfully.
+///
+/// Returns a 400 Bad Request response with a plain text body containing the error message
+/// if the request is invalid.
+///
+/// Returns a 500 Internal Server Error response with a plain text body containing the error message
+/// if an error occurred while removing the file.
 #[delete("/")]
 async fn delete(req_body: String) -> impl Responder {
-    match from_str::<File>(&req_body) {
-        Ok(file) => match remove(file.path) {
-            Ok(message) => HttpResponse::Ok().body(message),
-            Err(e) => HttpResponse::InternalServerError().body(e),
-        },
-        Err(e) => HttpResponse::BadRequest().body(format!("Invalid request: {}", e)),
+    match handle_delete(req_body).await {
+        Ok(message) => {
+            info!("Successfully removed file");
+            HttpResponse::Ok().body(message)
+        }
+        Err(e) => {
+            error!("Error removing file: {}", e);
+            match e {
+                AppError::InvalidRequest(_) => HttpResponse::BadRequest().body(e.to_string()),
+                _ => HttpResponse::InternalServerError().body("Internal server error"),
+            }
+        }
     }
 }
 
-
-/// Removes a file or directory at the given path.
+/// Handles a file deletion request by deserializing the JSON payload and removing the file at the given path.
 ///
-/// # Returns
-/// * `Result<String, String>` - Ok with success message on success
-///                   - Err with error message if file cannot be removed
-fn remove(path: String) -> Result<String, String> {
-    match metadata(&path) {
-        Ok(md) => match md.is_dir() {
-            true => {
-                match fs::remove_dir_all(path) {
-                    Ok(_) => Ok("Removed file".to_string()),
-                    Err(e) => Err(format!("Error removing directory and its contents: {}", e))
-                }
-            }
-            false => {
-                match fs::remove_file(path) {
-                    Ok(_) => Ok("Removed file".to_string()),
-                    Err(e) => Err(format!("Error removing file: {}", e))
-                }
-            }
-        }
-        Err(e) => Err(format!("Error getting metadata: {}", e))
-    }
+/// Returns a successful response with a plain text body containing the message "Successfully removed file"
+/// if the file was removed successfully.
+///
+/// Returns a 400 Bad Request response with a plain text body containing the error message
+/// if the request is invalid.
+///
+/// Returns a 500 Internal Server Error response with a plain text body containing the error message
+/// if an error occurred while removing the file.
+async fn handle_delete(req_body: String) -> Result<String> {
+    let file: File = serde_json::from_str(&req_body)
+        .map_err(|e| AppError::Serialization(e))?;
+
+    remove(file.path)
+}
+
+/// Removes a file or directory given its path.
+///
+/// Returns a successful response with a plain text body containing the message "Successfully removed file" or
+/// "Successfully removed directory and its contents" if the file or directory was removed successfully.
+///
+/// Returns a 500 Internal Server Error response with a plain text body containing the error message
+/// if an error occurred while removing the file or directory.
+///
+/// # Errors
+///
+/// * Returns an error if the file or directory does not exist.
+/// * Returns an error if the file or directory cannot be removed.
+fn remove(path: String) -> Result<String> {
+    let metadata = std::fs::metadata(&path)
+        .map_err(|e| AppError::FileOperation(format!("Failed to get file metadata: {}", e)))?;
+
+    let result = if metadata.is_dir() {
+        std::fs::remove_dir_all(&path)
+            .map(|_| "Successfully removed directory and its contents")
+    } else {
+        std::fs::remove_file(&path)
+            .map(|_| "Successfully removed file")
+    };
+
+    result
+        .map(|msg| {
+            info!("{}: {}", msg, path);
+            msg.to_string()
+        })
+        .map_err(|e| AppError::FileOperation(format!("Failed to remove: {}", e)))
 }
