@@ -15,15 +15,15 @@ type Config struct {
 }
 
 // getConfig reads the configuration from a JSON file specified by the -C flag.
+// And the PSK key specified by the -k flag.
 // It will exit the program if the file cannot be read or the JSON cannot be unmarshaled.
 // The configuration is expected to contain the following fields:
 // - Url: the URL of the receiver
 // - Paths: a list of paths to watch for files
-// - Key: the authorization key for the receiver
 func getConfig() Config {
 	var args struct {
 		Config string `arg:"-C,--config,required" help:"path to a config.json file"`
-		Key    string `arg:"-k,--key,required" help:"key to use for authontication same as receiver"`
+		Key    string `arg:"-k,--key,required" help:"key to use for authentication same as receiver"`
 	}
 
 	arg.MustParse(&args)
