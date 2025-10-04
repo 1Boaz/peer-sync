@@ -34,7 +34,9 @@ func readAndSend(path string, conf Config) error {
 			break
 		}
 
-		time.Sleep(time.Duration(attempt) * 500 * time.Millisecond)
+		if attempt < maxRetries {
+			time.Sleep(time.Duration(attempt) * 500 * time.Millisecond)
+		}
 	}
 
 	if err != nil {
