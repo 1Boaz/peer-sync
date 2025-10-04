@@ -92,7 +92,7 @@ func run(ctx context.Context) error {
 	}
 }
 
-// listen listens for file system events and handles them accordingly.
+// Listen listens for file system events and handles them accordingly.
 // It starts a loop that listens for events on the watcher's Events channel.
 // If the context is canceled, listen returns the context error.
 // If an event is received, listen logs a debug message and handles the event based on its type.
@@ -123,6 +123,8 @@ func listen(ctx context.Context, conf Config, watcher *fsnotify.Watcher) error {
 					slog.Debug("event debounced", "path", event.Name)
 					continue
 				}
+
+				time.Sleep(100 * time.Millisecond)
 
 				lastEventTimes[event.Name] = time.Now()
 				if err := handleFileEvent(event.Name, "WRITE", conf); err != nil {

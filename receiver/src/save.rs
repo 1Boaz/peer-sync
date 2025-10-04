@@ -27,7 +27,6 @@ struct File {
 async fn save(req_body: String) -> impl Responder {
     match handle_save(req_body).await {
         Ok(message) => {
-            info!("Successfully saved file");
             HttpResponse::Ok().body(message)
         }
         Err(e) => {
