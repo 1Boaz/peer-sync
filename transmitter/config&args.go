@@ -23,6 +23,7 @@ type Config struct {
 func getConfig() Config {
 	var args struct {
 		Config string `arg:"-C,--config,required" help:"path to a config.json file"`
+		Key    string `arg:"-k,--key,required" help:"key to use for authontication same as receiver"`
 	}
 
 	arg.MustParse(&args)
@@ -39,6 +40,8 @@ func getConfig() Config {
 		slog.Error("failed to unmarshal config", "error", err)
 		os.Exit(1)
 	}
+
+	cfg.Key = args.Key
 
 	return cfg
 }
