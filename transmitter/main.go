@@ -7,7 +7,6 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
-	"sync"
 	"syscall"
 	"time"
 
@@ -103,8 +102,8 @@ func run(ctx context.Context) error {
 // If an error is received from the watcher's Errors channel, listen logs an error message.
 func listen(ctx context.Context, conf Config, watcher *fsnotify.Watcher) error {
 	var (
-		lastEventTime = time.Time{}
-		debounceDelay = 2500 * time.Millisecond
+		lastEventTimes = make(map[string]time.Time)
+		debounceDelay  = 2500 * time.Millisecond
 	)
 	for {
 		select {
@@ -120,12 +119,12 @@ func listen(ctx context.Context, conf Config, watcher *fsnotify.Watcher) error {
 
 			switch event.Op {
 			case fsnotify.Write:
-				if time.Since(lastEventTime) < debounceDelay {
+				if time.Since(lastEventTimes[event.Name]) < debounceDelay {
 					slog.Debug("event debounced", "path", event.Name)
 					continue
 				}
 
-				lastEventTime = time.Now()
+				lastEventTimes[event.Name] = time.Now()
 				if err := handleFileEvent(event.Name, "WRITE", conf); err != nil {
 					slog.Error("failed to handle write event", "path", event.Name, "error", err)
 				}
@@ -151,9 +150,6 @@ func listen(ctx context.Context, conf Config, watcher *fsnotify.Watcher) error {
 // For DELETE events, handleFileEvent sends an empty request to the receiver to delete the file.
 // If the operation times out (after 30 seconds), handleFileEvent returns a timeout error.
 func handleFileEvent(path, action string, conf Config) error {
-	var wg sync.WaitGroup
-	wg.Add(1)
-
 	done := make(chan error, 1)
 
 	go func() {

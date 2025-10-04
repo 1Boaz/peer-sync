@@ -17,7 +17,16 @@ type Json struct {
 	Content string `json:"content"`
 }
 
-// var slog = logr.Discard()
+var httpClient = &http.Client{
+	Timeout: 30 * time.Second,
+	Transport: &http.Transport{
+		MaxIdleConns:        10,
+		IdleConnTimeout:     30 * time.Second,
+		DisableCompression:  true,
+		MaxIdleConnsPerHost: 10,
+	},
+}
+
 // send sends file data to the receiver with proper error handling and logging.
 // It compresses the data with gzip and includes appropriate headers.
 func send(path, content string, method string, config Config) error {
@@ -58,19 +67,8 @@ func send(path, content string, method string, config Config) error {
 	req.Header.Set("Content-Encoding", "gzip")
 	req.Header.Set("Authorization", config.Key)
 
-	// Configure HTTP client with timeouts
-	client := &http.Client{
-		Timeout: 30 * time.Second,
-		Transport: &http.Transport{
-			MaxIdleConns:        10,
-			IdleConnTimeout:     30 * time.Second,
-			DisableCompression:  true,
-			MaxIdleConnsPerHost: 10,
-		},
-	}
-
 	// Send the request
-	resp, err := client.Do(req)
+	resp, err := httpClient.Do(req)
 	if err != nil {
 		return fmt.Errorf("request failed: %w", err)
 	}
@@ -94,6 +92,11 @@ func send(path, content string, method string, config Config) error {
 		"status_code", resp.StatusCode,
 		"duration_ms", time.Since(start).Milliseconds(),
 		"response_size", len(body))
+
+	// Check for HTTP errors
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return fmt.Errorf("request failed with status %d: %s", resp.StatusCode, string(body))
+	}
 
 	return nil
 }

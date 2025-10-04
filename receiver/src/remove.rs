@@ -25,7 +25,6 @@ struct File {
 async fn delete(req_body: String) -> impl Responder {
     match handle_delete(req_body).await {
         Ok(message) => {
-            info!("Successfully removed file");
             HttpResponse::Ok().body(message)
         }
         Err(e) => {

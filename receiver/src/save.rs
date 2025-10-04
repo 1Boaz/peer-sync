@@ -42,14 +42,9 @@ async fn save(req_body: String) -> impl Responder {
 
 /// Handles a file save request by deserializing the JSON payload and saving the file to the given path.
 ///
-/// Returns a successful response with a plain text body containing the message "Successfully saved file"
-/// if the file was saved successfully.
+/// Returns `Ok(String)` with a success message if the file was saved successfully.
 ///
-/// Returns a 400 Bad Request response with a plain text body containing the error message
-/// if the request is invalid.
-///
-/// Returns a 500 Internal Server Error response with a plain text body containing the error message
-/// if an error occurred while saving the file.
+/// Returns `Err(AppError)` if deserialization fails or if an error occurred while saving the file.
 async fn handle_save(req_body: String) -> Result<String> {
     let file: File = serde_json::from_str(&req_body)
         .map_err(|e| AppError::Serialization(e))?;

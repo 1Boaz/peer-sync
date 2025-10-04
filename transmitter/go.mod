@@ -1,6 +1,6 @@
 module github.com/1Boaz/peer-sync.git
 
-go 1.24.6
+go 1.25.1
 
 require (
 	github.com/alexflint/go-arg v1.6.0
