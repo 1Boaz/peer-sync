@@ -15,9 +15,6 @@ pub enum AppError {
     #[error("I/O error: {0}")]
     Io(#[from] io::Error),
 
-    #[error("Serialization error: {0}")]
-    Serialization(#[from] serde_json::Error),
-
     #[error("File operation failed: {0}")]
     FileOperation(String),
 

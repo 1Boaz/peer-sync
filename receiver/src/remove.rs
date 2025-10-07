@@ -1,12 +1,7 @@
 use crate::error::{Result, AppError};
-use actix_web::{delete, HttpResponse, Responder};
-use serde::Deserialize;
+use actix_web::{delete, HttpRequest, HttpResponse, Responder};
 use tracing::{info, error};
-
-#[derive(Deserialize)]
-struct File {
-    path: String,
-}
+use std::path::Path;
 
 /// Deletes a file given its path.
 ///
@@ -22,8 +17,19 @@ struct File {
 /// Returns a 500 Internal Server Error response with a plain text body containing the error message
 /// if an error occurred while removing the file.
 #[delete("/")]
-async fn delete(req_body: String) -> impl Responder {
-    match handle_delete(req_body).await {
+async fn delete(req: HttpRequest) -> impl Responder {
+    let path_string = match req.headers().get("Path") {
+        Some(p) => match p.to_str() {
+            Ok(p) => p.to_string(),
+            Err(_) => return HttpResponse::BadRequest().body("Invalid UTF-8 in Path header")
+        },
+        None => return HttpResponse::BadRequest().body("Missing Path header")
+    };
+    let path = Path::new(&path_string);
+    if path.components().any(|c| matches!(c, std::path::Component::ParentDir)) {
+        return HttpResponse::BadRequest().body("Path traversal not allowed");
+    }
+    match remove(path_string).await {
         Ok(message) => {
             HttpResponse::Ok().body(message)
         }
@@ -35,23 +41,6 @@ async fn delete(req_body: String) -> impl Responder {
             }
         }
     }
-}
-
-/// Handles a file deletion request by deserializing the JSON payload and removing the file at the given path.
-///
-/// Returns a successful response with a plain text body containing the message "Successfully removed file"
-/// if the file was removed successfully.
-///
-/// Returns a 400 Bad Request response with a plain text body containing the error message
-/// if the request is invalid.
-///
-/// Returns a 500 Internal Server Error response with a plain text body containing the error message
-/// if an error occurred while removing the file.
-async fn handle_delete(req_body: String) -> Result<String> {
-    let file: File = serde_json::from_str(&req_body)
-        .map_err(|e| AppError::Serialization(e))?;
-
-    remove(file.path)
 }
 
 /// Removes a file or directory given its path.
@@ -66,7 +55,7 @@ async fn handle_delete(req_body: String) -> Result<String> {
 ///
 /// * Returns an error if the file or directory does not exist.
 /// * Returns an error if the file or directory cannot be removed.
-fn remove(path: String) -> Result<String> {
+async fn remove(path: String) -> Result<String> {
     let metadata = std::fs::metadata(&path)
         .map_err(|e| AppError::FileOperation(format!("Failed to get file metadata: {}", e)))?;
 

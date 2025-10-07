@@ -1174,8 +1174,6 @@ dependencies = [
  "clap",
  "clap_derive",
  "local-ip-address",
- "serde",
- "serde_json",
  "subtle",
  "thiserror",
  "tracing",

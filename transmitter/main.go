@@ -117,8 +117,7 @@ func listen(ctx context.Context, conf Config, watcher *fsnotify.Watcher) error {
 
 			slog.Debug("file system event", "event", event)
 
-			switch event.Op {
-			case fsnotify.Write:
+			if event.Has(fsnotify.Write) || event.Has(fsnotify.Chmod) || event.Has(fsnotify.Create) {
 				if time.Since(lastEventTimes[event.Name]) < debounceDelay {
 					slog.Debug("event debounced", "path", event.Name)
 					continue
@@ -130,8 +129,7 @@ func listen(ctx context.Context, conf Config, watcher *fsnotify.Watcher) error {
 				if err := handleFileEvent(event.Name, "WRITE", conf); err != nil {
 					slog.Error("failed to handle write event", "path", event.Name, "error", err)
 				}
-
-			case fsnotify.Remove, fsnotify.Rename:
+			} else if event.Has(fsnotify.Remove) {
 				if err := handleFileEvent(event.Name, "DELETE", conf); err != nil {
 					slog.Error("failed to handle delete/rename event", "path", event.Name, "error", err)
 				}

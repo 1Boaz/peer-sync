@@ -4,18 +4,12 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
 	"time"
 )
-
-type Json struct {
-	Path    string `json:"path"`
-	Content string `json:"content"`
-}
 
 var httpClient = &http.Client{
 	Timeout: 30 * time.Second,
@@ -40,17 +34,10 @@ func send(path, content string, method string, config Config) error {
 		"path", path,
 		"content_length", len(content))
 
-	// Prepare the request data
-	data := Json{Path: path, Content: content}
-	jsonData, err := json.Marshal(data)
-	if err != nil {
-		return fmt.Errorf("failed to marshal JSON: %w", err)
-	}
-
 	// Compress the data
 	var gzipped bytes.Buffer
 	gz := gzip.NewWriter(&gzipped)
-	if _, err := gz.Write(jsonData); err != nil {
+	if _, err := gz.Write([]byte(content)); err != nil {
 		return fmt.Errorf("failed to compress data: %w", err)
 	}
 	if err := gz.Close(); err != nil {
@@ -63,9 +50,9 @@ func send(path, content string, method string, config Config) error {
 		return fmt.Errorf("failed to create request: %w", err)
 	}
 
-	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Content-Encoding", "gzip")
 	req.Header.Set("Authorization", config.Key)
+	req.Header.Set("Path", path)
 
 	// Send the request
 	resp, err := httpClient.Do(req)

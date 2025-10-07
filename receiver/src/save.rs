@@ -1,13 +1,11 @@
-use crate::error::{Result, AppError};
-use actix_web::{post, HttpResponse, Responder};
-use serde::Deserialize;
 use std::path::Path;
+use crate::error::{Result, AppError};
+use actix_web::{post, web, HttpRequest, HttpResponse, Responder};
 use tracing::{info, error};
 
-#[derive(Deserialize)]
 struct File {
     path: String,
-    content: String,
+    content: Vec<u8>,
 }
 
 /// Saves a file given its path and content.
@@ -24,31 +22,38 @@ struct File {
 /// Returns a 500 Internal Server Error response with a plain text body containing the error message
 /// if an error occurred while saving the file.
 #[post("/")]
-async fn save(req_body: String) -> impl Responder {
-    match handle_save(req_body).await {
-        Ok(message) => {
-            HttpResponse::Ok().body(message)
+async fn save(req: HttpRequest, body: web::Bytes) -> impl Responder {
+    let path = match req.headers().get("Path") {
+        Some(path) => match path.to_str() {
+            Ok(p) => p.to_string(),
+            Err(_) => return HttpResponse::BadRequest().body("Invalid Path header"),
+        },
+        None => return HttpResponse::BadRequest().body("Missing Path header"),
+    };
+
+    let path = Path::new(&path);
+    if path.is_absolute() {
+        return HttpResponse::BadRequest().body("Absolute paths are not allowed");
+    }
+    if path.components().any(|c| matches!(c, std::path::Component::ParentDir)) {
+        return HttpResponse::BadRequest().body("Path traversal is not allowed");
+    }
+    let path = path.to_string_lossy().to_string();
+
+    let file = File {
+        path,
+        content: body.to_vec()
+    };
+    match save_file(file).await {
+        Ok(_) => {
+            info!("Successfully saved file");
+            HttpResponse::Ok().body("Successfully saved file")
         }
         Err(e) => {
             error!("Error saving file: {}", e);
-            match e {
-                AppError::InvalidRequest(_) => HttpResponse::BadRequest().body(e.to_string()),
-                _ => HttpResponse::InternalServerError().body("Internal server error"),
-            }
+            HttpResponse::InternalServerError().body(format!("Error: {}", e))
         }
     }
-}
-
-/// Handles a file save request by deserializing the JSON payload and saving the file to the given path.
-///
-/// Returns `Ok(String)` with a success message if the file was saved successfully.
-///
-/// Returns `Err(AppError)` if deserialization fails or if an error occurred while saving the file.
-async fn handle_save(req_body: String) -> Result<String> {
-    let file: File = serde_json::from_str(&req_body)
-        .map_err(|e| AppError::Serialization(e))?;
-
-    save_file(file)
 }
 
 /// Saves a file to the given path.
@@ -61,7 +66,7 @@ async fn handle_save(req_body: String) -> Result<String> {
 ///
 /// Returns a successful response with a plain text body containing the message "File saved successfully"
 /// if the file was saved successfully.
-fn save_file(data: File) -> Result<String> {
+async fn save_file(data: File) -> Result<String> {
     let path = Path::new(&data.path);
 
     if let Some(parent_dir) = path.parent() {
