@@ -119,7 +119,26 @@ func listen(ctx context.Context, conf Config, watcher *fsnotify.Watcher) error {
 
 			slog.Debug("file system event", "event", event)
 
-			if event.Has(fsnotify.Write) || event.Has(fsnotify.Chmod) || event.Has(fsnotify.Create) {
+			if event.Has(fsnotify.Create) {
+				// Handle directory creation separately
+				info, err := os.Lstat(event.Name)
+				if err != nil {
+					slog.Error("failed to stat created path", "path", event.Name, "error", err)
+				} else {
+					if info.IsDir() {
+						slog.Debug("new directory detected", "path", event.Name)
+						if err := addPathRecursively(watcher, event.Name); err != nil {
+							slog.Error("failed to watch new directory", "path", event.Name, "error", err)
+						} else {
+							slog.Debug("successfully watching new directory", "path", event.Name)
+						}
+						continue
+					}
+				}
+			}
+
+			// Handle file writes and other events
+			if event.Has(fsnotify.Write) || event.Has(fsnotify.Chmod) {
 				if time.Since(lastEventTimes[event.Name]) < debounceDelay {
 					slog.Debug("event debounced", "path", event.Name)
 					continue
