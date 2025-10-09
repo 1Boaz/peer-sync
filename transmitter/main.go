@@ -4,9 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io/fs"
 	"log/slog"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"syscall"
 	"time"
 
@@ -74,9 +76,9 @@ func run(ctx context.Context) error {
 		close(errCh)
 	}()
 
-	// Add paths to watch
+	// Add paths and their subdirectories to watch
 	for _, path := range conf.Paths {
-		if err := watcher.Add(path); err != nil {
+		if err := addPathRecursively(watcher, path); err != nil {
 			return fmt.Errorf("failed to watch path %s: %w", path, err)
 		}
 		slog.Debug("watching path", "path", path)
@@ -142,6 +144,43 @@ func listen(ctx context.Context, conf Config, watcher *fsnotify.Watcher) error {
 			slog.Error("watcher error", "error", err)
 		}
 	}
+}
+
+// addPathRecursively adds a path and all its subdirectories to the watcher.
+// For each directory encountered, it adds the directory to the watcher.
+// Returns an error if any directory could not be added to the watcher.
+func addPathRecursively(watcher *fsnotify.Watcher, path string) error {
+	fileInfo, err := os.Stat(path)
+	if err != nil {
+		return fmt.Errorf("failed to stat path %s: %w", path, err)
+	}
+
+	if !fileInfo.IsDir() {
+		return nil
+	}
+
+	// For directories, walk through all subdirectories
+	err = filepath.WalkDir(path, func(subPath string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+
+		// Only add directories to the watcher
+		if d.IsDir() {
+			if err := watcher.Add(subPath); err != nil {
+				return fmt.Errorf("failed to watch directory %s: %w", subPath, err)
+			}
+			slog.Debug("watching directory", "path", subPath)
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		return fmt.Errorf("failed to walk directory %s: %w", path, err)
+	}
+
+	return nil
 }
 
 // handleFileEvent handles a file system event by sending the file to the receiver.

@@ -79,9 +79,11 @@ go build -o transmitter
 
 ## Notes
 
-- The transmitter sends files as plain text in the JSON payload.
+- The transmitter sends files as gzip compressed plain text in the JSON payload.
 - The receiver creates directories as needed and overwrites existing files.
 - Adjust the `url` in `config.json` to match your receiver’s IP and port.
+- There is no encryption implemented(which means that if a request is intercepted, the contents will be visible indluding the key used to authenticate).
+- Consider using an alternative file transfer protocol if you need security or performance(this is just a personal project for practice, learning and fun).
 
 ## License
 
