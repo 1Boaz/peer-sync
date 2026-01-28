@@ -1,4 +1,5 @@
-receiver/.idea/
-receiver/target/
-transmitter/config.json
-transmitter/transmitter
+.vscode/
+/receiver/target/
+/receiver/.idea
+/transmitter/.idea/
+/transmitter/transmitter
