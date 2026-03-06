@@ -9,12 +9,12 @@ use std::net::TcpListener;
 fn main() {
     let args = ReceiverArgs::parse();
     println!("Serving on port: {}", args.port);
-    loop {
-        let listener = match TcpListener::bind(format!("0.0.0.0:{}", args.port)) {
-            Ok(lis) => { lis }
-            Err(_) => { todo!("Finish the error file/enum") }
-        };
+    let listener = match TcpListener::bind(format!("0.0.0.0:{}", args.port)) {
+        Ok(lis) => { lis }
+        Err(_) => { todo!("Finish the error file/enum") }
+    };
 
+    loop {
         let mut client = match listener.accept() {
             Ok(client) => { client.0 }
             Err(_) => { todo!("Finish the error file/enum") }
