@@ -1,15 +1,37 @@
-use axum::{Router, routing::get};
+mod args;
+mod error;
 
+use std::io::{Read, Write};
+use clap::Parser;
+use crate::args::ReceiverArgs;
+use std::net::TcpListener;
 
-#[tokio::main]
-async fn main() {
-    let app = Router::new()
-        .route("/", get(axum_is_solid));
-        
-    let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
-    axum::serve(listener, app).await.unwrap();
-}
+fn main() {
+    let args = ReceiverArgs::parse();
+    println!("Serving on port: {}", args.port);
+    loop {
+        let listener = match TcpListener::bind(format!("0.0.0.0:{}", args.port)) {
+            Ok(lis) => { lis }
+            Err(_) => { todo!("Finish the error file/enum") }
+        };
 
-async fn axum_is_solid() -> &'static str {
-    "dsf"
+        let mut client = match listener.accept() {
+            Ok(client) => { client.0 }
+            Err(_) => { todo!("Finish the error file/enum") }
+        };
+
+        println!("client connected");
+
+        let mut buf: [u8; 4096] = [0; 4096];
+        loop {
+            let message = match client.read(&mut buf) {
+                Ok(val) => {val}
+                Err(_) => {break}
+            };
+            if message == 0 {
+                break
+            }
+            client.write(&buf[0..message]).expect("Finish the error file/enum");
+        }
+    }
 }
