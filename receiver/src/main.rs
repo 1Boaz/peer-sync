@@ -1,11 +1,15 @@
 mod args;
 
-use std::io::Read;
+use std::fs::File;
+use std::io::{Read, Write};
 use clap::Parser;
 use args::ReceiverArgs;
 use std::net::TcpListener;
+use std::sync::mpsc;
+use std::sync::mpsc::Receiver;
+use std::thread;
 use rkyv::util::AlignedVec;
-use common::access_message;
+use common::{deserialize, SyncMessage};
 
 fn main() {
     let args = ReceiverArgs::parse();
@@ -18,6 +22,9 @@ fn main() {
     println!("Listening on port: {}", args.port);
 
     let mut buff: AlignedVec = AlignedVec::new();
+    let (tx, rx) = mpsc::sync_channel::<SyncMessage>(10);
+
+    thread::spawn(move || {write_thread(rx)});
 
     loop {
         let mut conn = match listener.accept() {
@@ -47,12 +54,32 @@ fn main() {
                 break;
             }
 
-            let message = match access_message(&buff) {
+            let message = match deserialize(&buff) {
                 Ok(val) => val,
                 Err(_) => todo!("Write the error enum with thiserror")
             };
 
-            println!("Received: {:?}", message);
+            tx.send(message).expect("Write the error enum with thiserror");
+        }
+    }
+}
+
+fn write_thread(rx: Receiver<SyncMessage>) {
+    let mut current_file: Option<File> = None;
+
+    loop {
+        let message = rx.recv().expect("Write the error enum with thiserror");
+
+        match message {
+            SyncMessage::NewFile { path, perm } => current_file = Some(File::create(path).expect("Write the error enum with thiserror")),
+            SyncMessage::Chunk(buff) => {
+                if let Some(ref mut file) = current_file {
+                    if let Err(e) = file.write_all(&buff) {
+                        eprintln!("Failed to write chunk: {}", e);
+                    }
+                }
+            }
+            SyncMessage::EndFile => current_file = None
         }
     }
 }
