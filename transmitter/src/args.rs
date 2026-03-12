@@ -8,5 +8,8 @@ pub struct TransmitterArgs {
 
     #[arg(long, short, default_value_t = 31415)]
     /// Port to host the receiver on
-    pub port: u16
+    pub port: u16,
+
+    #[arg(long, short, required = true)]
+    pub file: String
 }

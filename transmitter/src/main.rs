@@ -1,6 +1,8 @@
 mod args;
 
-use std::io::Write;
+use std::error::Error;
+use std::fs;
+use std::io::{Read, Write};
 use args::TransmitterArgs;
 use common::{serialize, SyncMessage};
 use std::net::TcpStream;
@@ -14,21 +16,39 @@ fn main() {
         Err(_) => todo!("Write the error enum with thiserror")
     };
 
-    let very_existing_file = SyncMessage::NewFile {
-        path: String::from("very_existing_dir/very_existing_file"),
-        perm: 0
-    };
+    let mut file = fs::File::open(&args.file).expect("File not Found");
 
-    let serialized = match serialize(&very_existing_file) {
-        Ok(vec) => vec,
-        Err(_) => todo!("Write the error enum with thiserror")
-    };
+    send_message(&mut stream, &SyncMessage::NewFile {
+        path: args.file,
+        perm: 0
+    }).expect("Failed sending message");
+
+    let mut buffer = vec![0u8; 1024];
+
+    loop {
+        let bytes_read = match file.read(&mut buffer) {
+            Ok(0) => {break}
+            Ok(n) => {n}
+            Err(_) => { break }
+        };
+        let chunk_data = buffer[..bytes_read].to_vec();
+
+        send_message(&mut stream, &SyncMessage::Chunk(chunk_data)).expect("Failed to send message");
+    }
+
+    send_message(&mut stream, &SyncMessage::EndFile).expect("Failed to send message");
+}
+
+fn send_message(stream: &mut TcpStream, message: &SyncMessage) -> Result<(), Box<dyn Error>> {
+    let serialized = serialize(&message)?;
 
     let sent = serialized.as_slice();
     println!("Sending payload of {} bytes", sent.len());
 
     let length_prefix = sent.len().to_be_bytes();
-    stream.write_all(&length_prefix).expect("Failed to write length");
+    stream.write_all(&length_prefix)?;
 
-    stream.write_all(sent).expect("Failed to write payload");
+    stream.write_all(sent)?;
+
+    Ok(())
 }
