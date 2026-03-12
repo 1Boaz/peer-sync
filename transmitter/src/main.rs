@@ -16,27 +16,29 @@ fn main() {
         Err(_) => todo!("Write the error enum with thiserror")
     };
 
-    let mut file = fs::File::open(&args.file).expect("File not Found");
+    for path in args.files {
+        let mut file = fs::File::open(&path).expect("File not Found");
 
-    send_message(&mut stream, &SyncMessage::NewFile {
-        path: args.file,
-        perm: 0
-    }).expect("Failed sending message");
+        send_message(&mut stream, &SyncMessage::NewFile {
+            path,
+            perm: 0
+        }).expect("Failed sending message");
 
-    let mut buffer = vec![0u8; 1024];
+        let mut buffer = vec![0u8; 1024];
 
-    loop {
-        let bytes_read = match file.read(&mut buffer) {
-            Ok(0) => {break}
-            Ok(n) => {n}
-            Err(_) => { break }
-        };
-        let chunk_data = buffer[..bytes_read].to_vec();
+        loop {
+            let bytes_read = match file.read(&mut buffer) {
+                Ok(0) => { break }
+                Ok(n) => { n }
+                Err(_) => { break }
+            };
+            let chunk_data = buffer[..bytes_read].to_vec();
 
-        send_message(&mut stream, &SyncMessage::Chunk(chunk_data)).expect("Failed to send message");
+            send_message(&mut stream, &SyncMessage::Chunk(chunk_data)).expect("Failed to send message");
+        }
+
+        send_message(&mut stream, &SyncMessage::EndFile).expect("Failed to send message");
     }
-
-    send_message(&mut stream, &SyncMessage::EndFile).expect("Failed to send message");
 }
 
 fn send_message(stream: &mut TcpStream, message: &SyncMessage) -> Result<(), Box<dyn Error>> {

@@ -10,6 +10,7 @@ pub struct TransmitterArgs {
     /// Port to host the receiver on
     pub port: u16,
 
-    #[arg(long, short, required = true)]
-    pub file: String
+    #[clap(short, long, value_parser, num_args = 1.., value_delimiter = ' ', required = true)]
+    /// Files to transfer, separated by <space>
+    pub files: Vec<String>
 }
