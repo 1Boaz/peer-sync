@@ -71,7 +71,7 @@ fn write_thread(rx: Receiver<SyncMessage>) {
         let message = rx.recv().expect("Write the error enum with thiserror");
 
         match message {
-            SyncMessage::NewFile { path, perm } => current_file = Some(File::create(path).expect("Write the error enum with thiserror")),
+            SyncMessage::NewFile { path, perm } => current_file = Some(create_parent_and_file(path).expect("Write the error enum with thiserror")),
             SyncMessage::Chunk(buff) => {
                 if let Some(ref mut file) = current_file {
                     if let Err(e) = file.write_all(&buff) {
@@ -82,4 +82,16 @@ fn write_thread(rx: Receiver<SyncMessage>) {
             SyncMessage::EndFile => current_file = None
         }
     }
+}
+
+fn create_parent_and_file(path: String) -> Result<File, std::io::Error> {
+    let path = std::path::Path::new(&path);
+    let prefix = path.parent();
+    if prefix.is_none() {
+        return File::create(path)
+    }
+
+    std::fs::create_dir_all(prefix.unwrap())?;
+
+    Ok(File::create(path)?)
 }
