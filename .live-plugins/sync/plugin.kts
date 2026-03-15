@@ -4,6 +4,7 @@ import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.fileChooser.FileChooser
 import com.intellij.openapi.fileChooser.FileChooserDescriptor
+import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.project.guessProjectDir
 import com.intellij.openapi.ui.InputValidator
 import com.intellij.openapi.ui.Messages
@@ -36,6 +37,8 @@ val portValidator = object : InputValidator {
 }
 
 fun runTransmitter(event: AnActionEvent, ip: String, port: String, filePaths: List<String>) {
+    FileDocumentManager.getInstance().saveAllDocuments()
+
     val project = event.project ?: return
     val projectDir = project.guessProjectDir() ?: return
 
