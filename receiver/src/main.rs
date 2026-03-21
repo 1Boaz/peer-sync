@@ -10,7 +10,7 @@ use std::sync::mpsc::Receiver;
 use std::thread;
 use rkyv::string::ArchivedString;
 use rkyv::util::AlignedVec;
-use common::{access_buffer, ArchivedSyncMessage, SyncMessage};
+use common::{access_buffer, ArchivedSyncMessage};
 
 fn main() {
     let args = ReceiverArgs::parse();
