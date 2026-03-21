@@ -24,7 +24,7 @@ fn main() {
             perm: 0
         }).expect("Failed sending message");
 
-        let mut buffer = vec![0u8; 1024];
+        let mut buffer = vec![0u8; 64 * 1024];
 
         loop {
             let bytes_read = match file.read(&mut buffer) {
