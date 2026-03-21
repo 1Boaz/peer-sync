@@ -24,9 +24,8 @@ pub fn serialize(sync_message: &SyncMessage) -> Result<AlignedVec, Error> {
 }
 
 // Helper function to access(look at the data without changing it)
-pub fn deserialize(serialized: &AlignedVec) -> Result<SyncMessage, Error> {
-    let archived = rkyv::access::<ArchivedSyncMessage, Error>(serialized)?;
-    rkyv::deserialize::<SyncMessage, Error>(archived)
+pub fn access_buffer(serialized: &AlignedVec) -> Result<&ArchivedSyncMessage, Error> {
+    rkyv::access::<ArchivedSyncMessage, Error>(serialized)
 }
 
 #[cfg(test)]
@@ -40,24 +39,24 @@ mod tests {
             perm: 5
         };
         let serialized = serialize(&demo_sync_message).unwrap();
-        let accessed = deserialize(&serialized).unwrap();
-        assert_eq!(accessed, demo_sync_message);
+        let accessed = access_buffer(&serialized).unwrap();
+        assert_eq!(accessed, &demo_sync_message);
     }
 
     #[test]
     fn ser_access_chunk_test() {
         let demo_sync_message: SyncMessage = SyncMessage::Chunk(vec![1, 2, 5, 6, 7, 2, 8, 1]);
         let serialized = serialize(&demo_sync_message).unwrap();
-        let accessed = deserialize(&serialized).unwrap();
-        assert_eq!(accessed, demo_sync_message);
+        let accessed = access_buffer(&serialized).unwrap();
+        assert_eq!(accessed, &demo_sync_message);
     }
 
     #[test]
     fn ser_access_endfile_test() {
         let demo_sync_message: SyncMessage = SyncMessage::EndFile;
         let serialized = serialize(&demo_sync_message).unwrap();
-        let accessed = deserialize(&serialized).unwrap();
+        let accessed = access_buffer(&serialized).unwrap();
         println!("{:?}", accessed);
-        assert_eq!(accessed, demo_sync_message);
+        assert_eq!(accessed, &demo_sync_message);
     }
 }

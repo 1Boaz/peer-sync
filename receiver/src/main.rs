@@ -8,8 +8,9 @@ use std::net::TcpListener;
 use std::sync::mpsc;
 use std::sync::mpsc::Receiver;
 use std::thread;
+use rkyv::string::ArchivedString;
 use rkyv::util::AlignedVec;
-use common::{deserialize, SyncMessage};
+use common::{access_buffer, ArchivedSyncMessage, SyncMessage};
 
 fn main() {
     let args = ReceiverArgs::parse();
@@ -21,8 +22,7 @@ fn main() {
 
     println!("Listening on port: {}", args.port);
 
-    let mut buff: AlignedVec = AlignedVec::new();
-    let (tx, rx) = mpsc::sync_channel::<SyncMessage>(10);
+    let (tx, rx) = mpsc::sync_channel::<AlignedVec>(10);
 
     thread::spawn(move || {write_thread(rx)});
 
@@ -46,7 +46,7 @@ fn main() {
 
             let msg_len = u64::from_be_bytes(len_buf) as usize;
 
-            buff.clear();
+            let mut buff: AlignedVec = AlignedVec::new();
             buff.resize(msg_len, 0);
 
             if let Err(e) = conn.read_exact(&mut buff[..]) {
@@ -54,38 +54,38 @@ fn main() {
                 break;
             }
 
-            let message = match deserialize(&buff) {
-                Ok(val) => val,
-                Err(_) => todo!("Write the error enum with thiserror")
-            };
-
-            tx.send(message).expect("Write the error enum with thiserror");
+            tx.send(buff).expect("Write the error enum with thiserror");
         }
     }
 }
 
-fn write_thread(rx: Receiver<SyncMessage>) {
+fn write_thread(rx: Receiver<AlignedVec>) {
     let mut current_file: Option<File> = None;
 
     loop {
-        let message = rx.recv().expect("Write the error enum with thiserror");
+        let buff = rx.recv().expect("Write the error enum with thiserror");
+
+        let message = match access_buffer(&buff) {
+            Ok(val) => val,
+            Err(_) => todo!("Write the error enum with thiserror")
+        };
 
         match message {
-            SyncMessage::NewFile { path, perm } => current_file = Some(create_parent_and_file(path).expect("Write the error enum with thiserror")),
-            SyncMessage::Chunk(buff) => {
+            ArchivedSyncMessage::NewFile { path, perm } => current_file = Some(create_parent_and_file(path).expect("Write the error enum with thiserror")),
+            ArchivedSyncMessage::Chunk(buff) => {
                 if let Some(ref mut file) = current_file {
                     if let Err(e) = file.write_all(&buff) {
                         eprintln!("Failed to write chunk: {}", e);
                     }
                 }
             }
-            SyncMessage::EndFile => current_file = None
+            ArchivedSyncMessage::EndFile => current_file = None
         }
     }
 }
 
-fn create_parent_and_file(path: String) -> Result<File, std::io::Error> {
-    let path = std::path::Path::new(&path);
+fn create_parent_and_file(path: &ArchivedString) -> Result<File, std::io::Error> {
+    let path = std::path::Path::new(path.as_str());
     let prefix = path.parent();
     if prefix.is_none() {
         return File::create(path)
