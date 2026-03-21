@@ -1,7 +1,7 @@
 mod args;
 
 use std::error::Error;
-use std::fs;
+use std::fs::File;
 use std::io::{Read, Write};
 use args::TransmitterArgs;
 use common::{serialize, SyncMessage};
@@ -17,11 +17,11 @@ fn main() {
     };
 
     for path in args.files {
-        let mut file = fs::File::open(&path).expect("File not Found");
+        let mut file = File::open(&path).expect("File not Found");
 
         send_message(&mut stream, &SyncMessage::NewFile {
             path,
-            perm: 0
+            perm: get_file_perm(&file)
         }).expect("Failed sending message");
 
         let mut buffer = vec![0u8; 64 * 1024];
@@ -38,6 +38,22 @@ fn main() {
         }
 
         send_message(&mut stream, &SyncMessage::EndFile).expect("Failed to send message");
+    }
+}
+
+fn get_file_perm(file: &File) -> u32 {
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        if let Ok(md) = file.metadata() {
+            md.permissions().mode()
+        } else {
+            0o644
+        }
+    }
+    #[cfg(not(unix))]
+    {
+        0o644
     }
 }
 

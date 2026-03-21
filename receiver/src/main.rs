@@ -1,13 +1,15 @@
 mod args;
 
-use std::fs::File;
+use std::fs::{File, OpenOptions};
 use std::io::{Read, Write};
 use clap::Parser;
 use args::ReceiverArgs;
 use std::net::TcpListener;
+use std::os::unix::fs::OpenOptionsExt;
 use std::sync::mpsc;
 use std::sync::mpsc::Receiver;
 use std::thread;
+use rkyv::primitive::ArchivedU32;
 use rkyv::string::ArchivedString;
 use rkyv::util::AlignedVec;
 use common::{access_buffer, ArchivedSyncMessage};
@@ -71,7 +73,7 @@ fn write_thread(rx: Receiver<AlignedVec>) {
         };
 
         match message {
-            ArchivedSyncMessage::NewFile { path, perm } => current_file = Some(create_parent_and_file(path).expect("Write the error enum with thiserror")),
+            ArchivedSyncMessage::NewFile { path, perm } => current_file = Some(create_parent_and_file(path, perm).expect("Write the error enum with thiserror")),
             ArchivedSyncMessage::Chunk(buff) => {
                 if let Some(ref mut file) = current_file {
                     if let Err(e) = file.write_all(&buff) {
@@ -84,14 +86,31 @@ fn write_thread(rx: Receiver<AlignedVec>) {
     }
 }
 
-fn create_parent_and_file(path: &ArchivedString) -> Result<File, std::io::Error> {
+fn create_parent_and_file(path: &ArchivedString, perm: &ArchivedU32) -> Result<File, std::io::Error> {
     let path = std::path::Path::new(path.as_str());
     let prefix = path.parent();
-    if prefix.is_none() {
-        return File::create(path)
+
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+
+        if prefix.is_none() {
+            return OpenOptions::new().mode(u32::from(*perm)).create(true).open(path)
+        }
+
+        std::fs::create_dir_all(prefix.unwrap())?;
+
+        Ok(OpenOptions::new().mode(u32::from(*perm)).create(true).open(path)?)
     }
 
-    std::fs::create_dir_all(prefix.unwrap())?;
+    #[cfg(not(unix))]
+    {
+        if prefix.is_none() {
+            return File::create(path)
+        }
 
-    Ok(File::create(path)?)
+        std::fs::create_dir_all(prefix.unwrap())?;
+
+        Ok(File::create(path)?)
+    }
 }
