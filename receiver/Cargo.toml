@@ -7,3 +7,4 @@ edition = "2024"
 clap = { version = "4.5.60", features = ["derive"]}
 rkyv = "0.8.15"
 common = { path = "../common"}
+tempfile = "3.27.0"
