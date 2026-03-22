@@ -73,7 +73,25 @@ fn write_thread(rx: Receiver<AlignedVec>) {
         };
 
         match message {
-            ArchivedSyncMessage::NewFile { path, perm } => current_file = Some(create_parent_and_file(path, perm).expect("Write the error enum with thiserror")),
+            ArchivedSyncMessage::NewFile { path, perm } => {
+                let base_dir = std::env::current_dir().expect("Failed to get current dir");
+
+                let mut safe_relative_path = std::path::PathBuf::new();
+                for component in Path::new(path.as_str()).components() {
+                    if let std::path::Component::Normal(c) = component {
+                        safe_relative_path.push(c);
+                    }
+                }
+                let final_path = base_dir.join(safe_relative_path);
+
+                current_file = match create_parent_and_file(&final_path, &u32::from(*perm)) {
+                    Ok(file) => Some(file),
+                    Err(e) => {
+                        eprintln!("Failed to create file {:?}: {}", final_path, e);
+                        None
+                    }
+                };
+            }
             ArchivedSyncMessage::Chunk(buff) => {
                 if let Some(ref mut file) = current_file {
                     if let Err(e) = file.write_all(&buff) {
